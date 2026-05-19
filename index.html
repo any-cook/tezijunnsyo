@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工場手順書システム | Any-Cook</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent: #1D9E75;
+    --accent-light: #E1F5EE;
+    --accent-dark: #085041;
+    --accent-mid: #0F6E56;
+    --bg: #F7F8F6;
+    --surface: #FFFFFF;
+    --surface2: #F1F3F1;
+    --border: rgba(0,0,0,0.09);
+    --border-strong: rgba(0,0,0,0.16);
+    --text: #1A1C1A;
+    --text2: #4A4F4A;
+    --text3: #8A908A;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;
+    background: var(--bg); color: var(--text);
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 20px; height: 54px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0; box-shadow: var(--shadow); z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 34px; height: 34px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+  .logo-name { font-size: 14px; font-weight: 700; }
+  .logo-sub { font-size: 10px; color: var(--text3); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; transition: background 0.3s; }
+  .status-dot.connected { background: var(--accent); }
+  .status-label { font-size: 11px; color: var(--text3); }
+  .btn-mode { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border-strong); background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text2); transition: all 0.15s; }
+  .btn-mode:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-mode.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .app-body { display: flex; flex: 1; overflow: hidden; }
+  .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+  .sidebar-top { padding: 12px; border-bottom: 1px solid var(--border); }
+  .search-wrap { position: relative; }
+  .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text3); pointer-events: none; }
+  .search-box { width: 100%; padding: 7px 10px 7px 32px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface2); font-size: 12px; color: var(--text); outline: none; }
+  .sidebar-section { padding: 10px 14px 4px; font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; }
+  .sidebar-list { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+  .manual-item { padding: 9px 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; transition: all 0.12s; }
+  .manual-item:hover { background: var(--surface2); }
+  .manual-item.active { background: var(--accent-light); border-left-color: var(--accent); }
+  .manual-item-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text3); flex-shrink: 0; }
+  .manual-item.active .manual-item-icon { background: var(--accent); color: #fff; }
+  .manual-item-info { flex: 1; min-width: 0; }
+  .manual-item-title { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .manual-item-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .step-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; background: var(--surface2); color: var(--text3); }
+  .manual-item.active .step-badge { background: var(--accent-mid); color: #fff; }
+  .sidebar-bottom { padding: 10px 12px; border-top: 1px solid var(--border); }
+  .btn-new { width: 100%; padding: 8px; border: 1.5px dashed var(--accent); background: var(--accent-light); border-radius: var(--radius); font-size: 12px; font-weight: 600; color: var(--accent-dark); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
+  .btn-new:hover { background: var(--accent); color: #fff; border-style: solid; }
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  #view-panel { display: flex; flex-direction: column; height: 100%; }
+  .manual-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; flex-shrink: 0; }
+  .manual-title { font-size: 20px; font-weight: 700; line-height: 1.3; }
+  .manual-tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
+  .tag-green { background: var(--accent-light); color: var(--accent-dark); }
+  .tag-gray { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .progress-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .progress-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
+  .progress-pct { font-size: 12px; font-weight: 700; color: var(--accent); min-width: 36px; }
+  .view-body { padding: 20px 24px; flex: 1; }
+  .video-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .video-label { padding: 10px 14px; font-size: 11px; font-weight: 700; color: var(--text2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; letter-spacing: 0.04em; text-transform: uppercase; }
+  .video-wrap { position: relative; background: #0a0a0a; aspect-ratio: 16/9; }
+  .video-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
+  .play-btn { width: 56px; height: 56px; border-radius: 50%; background: rgba(29,158,117,0.9); display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; transition: transform 0.2s, background 0.2s; }
+  .video-placeholder:hover .play-btn { transform: scale(1.1); background: var(--accent); }
+  .video-hint { font-size: 12px; color: rgba(255,255,255,0.5); }
+  #video-iframe { width: 100%; height: 100%; border: none; display: none; position: absolute; inset: 0; }
+
+  /* ===== テロップバー ===== */
+  .telop-bar {
+    background: #111;
+    display: flex; align-items: center;
+    padding: 10px 14px; gap: 12px;
+    border-top: 1px solid #222; min-height: 60px;
+  }
+  .telop-ctrl { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .btn-tp {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); border: none; color: #fff;
+    font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s; flex-shrink: 0;
+  }
+  .btn-tp:hover { background: var(--accent-mid); }
+  .timer-disp {
+    font-size: 14px; font-weight: 700; color: #777;
+    font-variant-numeric: tabular-nums; min-width: 42px;
+    font-family: monospace;
+  }
+  .telop-body { flex: 1; min-width: 0; }
+  .telop-main {
+    font-size: 16px; font-weight: 700; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-height: 24px; transition: opacity 0.25s;
+  }
+  .telop-main.fade { opacity: 0; }
+  .telop-next { font-size: 11px; color: #555; margin-top: 3px; }
+  .btn-tr { background: none; border: 1px solid #2a2a2a; border-radius: 6px; color: #555; font-size: 11px; padding: 5px 9px; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+  .btn-tr:hover { border-color: #555; color: #aaa; }
+
+  .video-url-input { width: 100%; padding: 10px 14px; border: none; border-top: 1px solid var(--border); background: var(--surface2); font-size: 12px; color: var(--text); outline: none; display: none; }
+  .steps-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .steps-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .btn-reset { font-size: 11px; color: var(--text3); background: none; border: none; cursor: pointer; }
+  .btn-reset:hover { color: var(--accent); }
+  .step-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 8px; transition: all 0.2s; box-shadow: var(--shadow); cursor: pointer; }
+  .step-card:hover { border-color: var(--accent); }
+  .step-card.done { opacity: 0.6; background: var(--surface2); }
+  .step-card.active-step { border-color: var(--accent); background: var(--accent-light); box-shadow: 0 0 0 3px rgba(29,158,117,0.15); }
+  .step-num-circle { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--surface2); border: 2px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--text2); transition: all 0.2s; }
+  .step-card.done .step-num-circle, .step-card.active-step .step-num-circle { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step-body { flex: 1; }
+  .step-name { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+  .step-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .step-card.done .step-name, .step-card.done .step-desc { color: var(--text3); }
+  .step-check-icon { font-size: 18px; color: var(--text3); flex-shrink: 0; margin-top: 6px; }
+  .step-card.done .step-check-icon { color: var(--accent); }
+
+  #admin-panel { display: none; padding: 20px 24px; }
+  .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .admin-card-title { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+  .field-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+  .field-row { margin-bottom: 12px; }
+  .ai { width: 100%; padding: 9px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface2); font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; font-family: inherit; }
+  .ai:focus { border-color: var(--accent); background: var(--surface); }
+  textarea.ai { resize: vertical; line-height: 1.5; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .step-edit-item { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; background: var(--surface2); }
+  .step-edit-num { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; background: var(--accent-light); color: var(--accent-dark); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  .step-edit-fields { flex: 1; }
+  .step-edit-fields .ai { margin-bottom: 6px; font-size: 12px; }
+  .step-edit-fields .ai:last-child { margin-bottom: 0; }
+  .btn-del { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; padding: 4px; transition: color 0.15s; margin-top: 2px; }
+  .btn-del:hover { color: #E24B4A; }
+
+  /* テロップ編集 */
+  .telop-hint { font-size: 11px; color: var(--text3); margin-bottom: 10px; line-height: 1.6; padding: 8px 10px; background: var(--surface2); border-radius: 6px; border-left: 3px solid var(--accent); }
+  .telop-edit-item { display: flex; gap: 8px; align-items: center; padding: 8px 10px; margin-bottom: 6px; border-radius: var(--radius); background: #161616; border: 1px solid #2a2a2a; }
+  .telop-edit-item input[type=text]:first-child { width: 68px; flex-shrink: 0; padding: 6px 8px; border: 1px solid #333; border-radius: 6px; background: #222; font-size: 13px; color: #fff; text-align: center; font-weight: 700; outline: none; font-family: monospace; }
+  .telop-edit-item input[type=text]:first-child:focus { border-color: var(--accent); }
+  .telop-edit-item input[type=text]:nth-child(3) { flex: 1; padding: 6px 8px; border: 1px solid #333; border-radius: 6px; background: #222; font-size: 13px; color: #fff; outline: none; font-family: inherit; }
+  .telop-edit-item input[type=text]:nth-child(3):focus { border-color: var(--accent); }
+  .telop-sep { font-size: 11px; color: #444; flex-shrink: 0; }
+
+  .btn-add-telop { width: 100%; padding: 8px; border: 1.5px dashed #333; background: #111; border-radius: var(--radius); font-size: 12px; font-weight: 600; color: #666; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; margin-top: 4px; }
+  .btn-add-telop:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-add-step { width: 100%; padding: 9px; border: 1.5px dashed var(--accent); background: var(--accent-light); border-radius: var(--radius); font-size: 12px; font-weight: 600; color: var(--accent-dark); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
+  .btn-add-step:hover { background: var(--accent); color: #fff; border-style: solid; }
+  .btn-save { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: var(--radius-lg); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s; margin-top: 4px; }
+  .btn-save:hover { background: var(--accent-mid); }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-delete-manual { width: 100%; padding: 9px; border: 1px solid #F7C1C1; background: #FCEBEB; border-radius: var(--radius); font-size: 12px; font-weight: 600; color: #A32D2D; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; margin-top: 8px; }
+  .btn-delete-manual:hover { background: #E24B4A; color: #fff; border-color: #E24B4A; }
+
+  #login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+  #login-overlay.show { display: flex; }
+  .login-card { background: var(--surface); border-radius: var(--radius-lg); padding: 28px 32px; width: 320px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  .login-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .login-sub { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+  .login-error { font-size: 12px; color: #A32D2D; margin-top: 8px; display: none; }
+  .btn-login { width: 100%; padding: 10px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+  .btn-cancel-login { width: 100%; padding: 8px; background: none; border: 1px solid var(--border-strong); border-radius: var(--radius); color: var(--text2); font-size: 13px; cursor: pointer; margin-top: 8px; }
+  #toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: #fff; opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; z-index: 200; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { background: var(--accent); }
+  #toast.error { background: #E24B4A; }
+  .loading-overlay { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--text3); font-size: 13px; gap: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text3); gap: 10px; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-title">🔒 管理者ログイン</div>
+    <div class="login-sub">管理者パスワードを入力してください</div>
+    <div class="field-label">パスワード</div>
+    <input class="ai" type="password" id="pw-input" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')doLogin()" />
+    <div class="login-error" id="login-error">パスワードが違います</div>
+    <button class="btn-login" onclick="doLogin()">ログイン</button>
+    <button class="btn-cancel-login" onclick="cancelLogin()">キャンセル</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📋</div>
+    <div>
+      <div class="logo-name">工場手順書システム</div>
+      <div class="logo-sub">Any-Cook LLC</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" id="status-dot"></div>
+    <div class="status-label" id="status-label">接続中...</div>
+    <button class="btn-mode active" id="btn-view" onclick="setMode('view')">👁 閲覧</button>
+    <button class="btn-mode" id="btn-admin" onclick="requestAdmin()">⚙ 管理</button>
+  </div>
+</header>
+
+<div class="app-body">
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-box" type="text" placeholder="手順書を検索..." oninput="filterManuals(this.value)" />
+      </div>
+    </div>
+    <div class="sidebar-section">手順書一覧</div>
+    <div class="sidebar-list" id="sidebar-list">
+      <div class="loading-overlay"><div class="spinner"></div> 読み込み中...</div>
+    </div>
+    <div class="sidebar-bottom" id="sidebar-bottom" style="display:none">
+      <button class="btn-new" onclick="createNewManual()">＋ 新規手順書を作成</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="view-panel">
+      <div id="view-empty" class="empty-state">
+        <div style="font-size:40px;opacity:0.3">📋</div>
+        <div style="font-size:14px">左のリストから手順書を選択してください</div>
+      </div>
+      <div id="view-content" style="display:none; flex-direction:column;">
+        <div class="manual-header">
+          <div class="manual-title" id="view-title">—</div>
+          <div class="manual-tags">
+            <span class="tag tag-green" id="view-cat">—</span>
+            <span class="tag tag-gray" id="view-time">—</span>
+            <span class="tag tag-gray" id="view-steps-tag">—</span>
+          </div>
+          <div class="progress-row">
+            <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+            <div class="progress-pct" id="progress-pct">0%</div>
+          </div>
+        </div>
+        <div class="view-body">
+          <div class="video-card">
+            <div class="video-label">
+              <span>🎬 説明動画</span>
+              <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">▶ ボタンでテロップをスタート</span>
+            </div>
+            <div class="video-wrap">
+              <div class="video-placeholder" id="video-placeholder" onclick="showVideoInput()">
+                <div class="play-btn">▶</div>
+                <div class="video-hint">クリックして動画URLを設定</div>
+              </div>
+              <iframe id="video-iframe" allowfullscreen></iframe>
+            </div>
+            <!-- テロップバー -->
+            <div class="telop-bar">
+              <div class="telop-ctrl">
+                <button class="btn-tp" id="btn-tp" onclick="toggleTelop()" title="テロップ開始 / 一時停止">▶</button>
+                <div class="timer-disp" id="timer-disp">0:00</div>
+              </div>
+              <div class="telop-body">
+                <div class="telop-main" id="telop-main">— テロップなし —</div>
+                <div class="telop-next" id="telop-next"></div>
+              </div>
+              <button class="btn-tr" onclick="resetTelop()">↺ リセット</button>
+            </div>
+            <input class="video-url-input" id="video-url-input" type="text"
+              placeholder="YouTube URL を入力して Enter（例: https://youtu.be/xxxxx）"
+              onkeydown="handleVideoUrl(event)"
+              onblur="document.getElementById('video-url-input').style.display='none'" />
+          </div>
+
+          <div class="steps-header">
+            <div class="steps-title">✓ 作業手順</div>
+            <button class="btn-reset" onclick="resetChecks()">↺ リセット</button>
+          </div>
+          <div id="steps-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="admin-panel">
+      <div class="admin-card">
+        <div class="admin-card-title">📄 基本情報</div>
+        <div class="field-row">
+          <div class="field-label">手順書タイトル</div>
+          <input class="ai" type="text" id="a-title" placeholder="例: 釜洗浄手順" />
+        </div>
+        <div class="row2">
+          <div class="field-row">
+            <div class="field-label">カテゴリ</div>
+            <input class="ai" type="text" id="a-category" placeholder="例: 洗浄・衛生" />
+          </div>
+          <div class="field-row">
+            <div class="field-label">所要時間</div>
+            <input class="ai" type="text" id="a-time" placeholder="例: 30分" />
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-title">🎬 説明動画 + テロップ設定</div>
+        <div class="field-row">
+          <div class="field-label">YouTube URL（限定公開推奨）</div>
+          <input class="ai" type="text" id="a-video" placeholder="https://youtu.be/xxxxx" />
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin:14px 0 6px">🗒 テロップ一覧</div>
+        <div class="telop-hint">
+          時間は <strong>分:秒</strong> 形式で入力（例: 0:30, 1:15, 2:00）<br>
+          その時間になると自動でテロップが切り替わります。閲覧画面で ▶ を押して確認できます。
+        </div>
+        <div id="admin-telops"></div>
+        <button class="btn-add-telop" onclick="addTelop()">＋ テロップを追加</button>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-title">📋 作業ステップ</div>
+        <div id="admin-steps"></div>
+        <button class="btn-add-step" onclick="addStep()">＋ ステップを追加</button>
+      </div>
+
+      <button class="btn-save" id="btn-save" onclick="saveManual()">💾 Firestoreに保存する</button>
+      <button class="btn-delete-manual" id="btn-delete" onclick="deleteManual()" style="display:none">🗑 この手順書を削除する</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBLhw_kUuERd-RTPqCWcl_n8R3dQVju8QI",
+  authDomain: "tezyunnsyo.firebaseapp.com",
+  projectId: "tezyunnsyo",
+  storageBucket: "tezyunnsyo.firebasestorage.app",
+  messagingSenderId: "900063190111",
+  appId: "1:900063190111:web:39eca8c46531ddca190fea"
+};
+const ADMIN_PASSWORD = "anycook8299";
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let allManuals=[], manuals=[], currentId=null;
+let editSteps=[], editTelops=[];
+let checks={};
+let telopTimer=null, telopSec=0, telopRunning=false;
+
+// ===== FIREBASE =====
+async function initFirebase() {
+  try {
+    const snap = await getDocs(collection(db,"manuals"));
+    allManuals=[];
+    snap.forEach(d => allManuals.push({id:d.id,...d.data()}));
+    manuals=[...allManuals];
+    setStatus(true);
+    renderSidebar();
+    if (manuals.length>0) selectManual(manuals[0].id);
+  } catch(e) {
+    setStatus(false);
+    document.getElementById('sidebar-list').innerHTML=
+      '<div class="loading-overlay" style="flex-direction:column;gap:6px"><span style="font-size:20px">⚠</span><span>Firebase接続エラー</span><span style="font-size:11px">Firestoreのルールを確認してください</span></div>';
+  }
+}
+function setStatus(ok) {
+  document.getElementById('status-dot').className='status-dot'+(ok?' connected':'');
+  document.getElementById('status-label').textContent=ok?'Firebase接続中':'未接続';
+}
+
+// ===== SIDEBAR =====
+window.filterManuals=q=>{manuals=allManuals.filter(m=>m.title.includes(q)||(m.category||'').includes(q));renderSidebar();};
+function renderSidebar() {
+  const el=document.getElementById('sidebar-list');
+  if(!manuals.length){el.innerHTML='<div class="empty-state" style="padding:24px 16px"><div style="font-size:28px;opacity:.3">📋</div><div style="font-size:12px">手順書がありません</div></div>';return;}
+  el.innerHTML='';
+  manuals.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='manual-item'+(m.id===currentId?' active':'');
+    d.innerHTML=`<div class="manual-item-icon">${getCatIcon(m.category)}</div>
+      <div class="manual-item-info">
+        <div class="manual-item-title">${m.title}</div>
+        <div class="manual-item-sub">${m.category||'未分類'} · ${m.time||'—'}</div>
+      </div><span class="step-badge">${(m.steps||[]).length}</span>`;
+    d.onclick=()=>selectManual(m.id);
+    el.appendChild(d);
+  });
+}
+function getCatIcon(c){
+  if(!c)return'📋';
+  if(c.includes('洗浄')||c.includes('衛生'))return'🧹';
+  if(c.includes('製造')||c.includes('加工'))return'🏭';
+  if(c.includes('包装'))return'📦';
+  if(c.includes('品質')||c.includes('検査'))return'🔍';
+  if(c.includes('冷凍')||c.includes('冷蔵'))return'❄';
+  return'📋';
+}
+
+// ===== SELECT MANUAL =====
+function selectManual(id){
+  currentId=id;
+  if(!checks[id])checks[id]={};
+  stopTelop(); resetTelopState();
+  renderSidebar(); renderView();
+}
+
+// ===== VIEW =====
+function renderView(){
+  const m=allManuals.find(x=>x.id===currentId);
+  document.getElementById('view-empty').style.display=m?'none':'flex';
+  const vc=document.getElementById('view-content');
+  vc.style.display=m?'flex':'none';
+  if(!m)return;
+  document.getElementById('view-title').textContent=m.title;
+  document.getElementById('view-cat').textContent='🏷 '+(m.category||'未分類');
+  document.getElementById('view-time').textContent='⏰ '+(m.time||'—');
+  const steps=m.steps||[];
+  const done=steps.filter((_,i)=>checks[currentId][i]).length;
+  const pct=steps.length?Math.round(done/steps.length*100):0;
+  document.getElementById('view-steps-tag').textContent=steps.length+' ステップ';
+  document.getElementById('progress-fill').style.width=pct+'%';
+  document.getElementById('progress-pct').textContent=pct+'%';
+  // video
+  const iframe=document.getElementById('video-iframe');
+  const ph=document.getElementById('video-placeholder');
+  if(m.video){
+    let src=m.video;
+    const yt=m.video.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{11})/);
+    if(yt)src='https://www.youtube.com/embed/'+yt[1];
+    iframe.src=src; iframe.style.display='block'; ph.style.display='none';
+  }else{
+    iframe.src=''; iframe.style.display='none'; ph.style.display='flex';
+  }
+  updateTelopDisplay(telopSec);
+  // steps
+  const sl=document.getElementById('steps-list');
+  sl.innerHTML='';
+  if(!steps.length){sl.innerHTML='<div class="empty-state" style="padding:20px"><div style="font-size:13px;color:var(--text3)">ステップがありません</div></div>';return;}
+  steps.forEach((s,i)=>{
+    const isDone=!!checks[currentId][i];
+    const c=document.createElement('div');
+    c.className='step-card'+(isDone?' done':'');
+    c.id='sc'+i;
+    c.innerHTML=`<div class="step-num-circle">${isDone?'✓':i+1}</div>
+      <div class="step-body"><div class="step-name">${s.title}</div><div class="step-desc">${s.desc||''}</div></div>
+      <div class="step-check-icon">${isDone?'✅':'○'}</div>`;
+    c.onclick=()=>{checks[currentId][i]=!checks[currentId][i];renderView();};
+    sl.appendChild(c);
+  });
+}
+window.resetChecks=()=>{checks[currentId]={};renderView();};
+window.showVideoInput=()=>{const i=document.getElementById('video-url-input');i.style.display='block';i.focus();};
+window.handleVideoUrl=e=>{
+  if(e.key!=='Enter')return;
+  const url=e.target.value.trim();if(!url)return;
+  const m=allManuals.find(x=>x.id===currentId);
+  if(m){m.video=url;e.target.style.display='none';e.target.value='';renderView();}
+};
+
+// ===== TELOP =====
+function parseSec(str){
+  if(!str)return 0;
+  str=String(str).trim();
+  if(str.includes(':')){const[a,b]=str.split(':').map(Number);return(a||0)*60+(b||0);}
+  return parseInt(str)||0;
+}
+function fmtSec(s){const m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
+
+function updateTelopDisplay(sec){
+  const m=allManuals.find(x=>x.id===currentId);
+  const telops=(m&&m.telops)||[];
+  document.getElementById('timer-disp').textContent=fmtSec(sec);
+  const sorted=[...telops].sort((a,b)=>parseSec(a.time)-parseSec(b.time));
+  let cur=null,nextSec=null;
+  for(const t of sorted){
+    const ts=parseSec(t.time);
+    if(ts<=sec)cur=t;
+    else if(nextSec===null)nextSec=ts;
+  }
+  const mainEl=document.getElementById('telop-main');
+  const nextEl=document.getElementById('telop-next');
+  if(cur){
+    mainEl.textContent=cur.text;
+    nextEl.textContent=nextSec!==null?'次のテロップ → '+fmtSec(nextSec):'';
+    // ステップハイライト
+    if(cur.stepIndex!==undefined){
+      document.querySelectorAll('.step-card').forEach((el,i)=>{
+        el.classList.toggle('active-step',i===cur.stepIndex&&!checks[currentId]?.[i]);
+      });
+    }
+  }else{
+    mainEl.textContent=sorted.length?'（▶ を押してスタート）':'— テロップなし —';
+    nextEl.textContent=nextSec!==null?'最初のテロップ → '+fmtSec(nextSec):'';
+    document.querySelectorAll('.step-card').forEach(el=>el.classList.remove('active-step'));
+  }
+}
+
+window.toggleTelop=function(){
+  if(telopRunning){stopTelop();}
+  else{
+    telopRunning=true;
+    document.getElementById('btn-tp').textContent='⏸';
+    telopTimer=setInterval(()=>{telopSec++;updateTelopDisplay(telopSec);},1000);
+  }
+};
+function stopTelop(){
+  clearInterval(telopTimer);telopRunning=false;
+  document.getElementById('btn-tp').textContent='▶';
+}
+function resetTelopState(){
+  telopSec=0;
+  const td=document.getElementById('timer-disp');
+  const tm=document.getElementById('telop-main');
+  const tn=document.getElementById('telop-next');
+  if(td)td.textContent='0:00';
+  if(tm)tm.textContent='— テロップなし —';
+  if(tn)tn.textContent='';
+}
+window.resetTelop=function(){stopTelop();resetTelopState();updateTelopDisplay(0);};
+
+// ===== MODE =====
+window.setMode=function(mode){
+  document.getElementById('view-panel').style.display=mode==='view'?'flex':'none';
+  document.getElementById('admin-panel').style.display=mode==='admin'?'block':'none';
+  document.getElementById('btn-view').className='btn-mode'+(mode==='view'?' active':'');
+  document.getElementById('btn-admin').className='btn-mode'+(mode==='admin'?' active':'');
+  document.getElementById('sidebar-bottom').style.display=mode==='admin'?'block':'none';
+  if(mode==='admin')renderAdmin();
+  if(mode==='view')renderView();
+};
+window.requestAdmin=function(){
+  document.getElementById('pw-input').value='';
+  document.getElementById('login-error').style.display='none';
+  document.getElementById('login-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('pw-input').focus(),100);
+};
+window.doLogin=function(){
+  if(document.getElementById('pw-input').value===ADMIN_PASSWORD){
+    document.getElementById('login-overlay').classList.remove('show');setMode('admin');
+  }else{document.getElementById('login-error').style.display='block';document.getElementById('pw-input').value='';}
+};
+window.cancelLogin=()=>document.getElementById('login-overlay').classList.remove('show');
+
+// ===== ADMIN =====
+function renderAdmin(){
+  const m=allManuals.find(x=>x.id===currentId);
+  document.getElementById('a-title').value=m?m.title:'';
+  document.getElementById('a-category').value=m?(m.category||''):'';
+  document.getElementById('a-time').value=m?(m.time||''):'';
+  document.getElementById('a-video').value=m?(m.video||''):'';
+  editSteps=m?(m.steps||[]).map(s=>({...s})):[];
+  editTelops=m?(m.telops||[]).map(t=>({...t})):[];
+  document.getElementById('btn-delete').style.display=m?'block':'none';
+  renderEditSteps();renderEditTelops();
+}
+function renderEditSteps(){
+  const el=document.getElementById('admin-steps');el.innerHTML='';
+  editSteps.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='step-edit-item';
+    d.innerHTML=`<div class="step-edit-num">${i+1}</div>
+      <div class="step-edit-fields">
+        <input class="ai" type="text" placeholder="手順タイトル" value="${s.title||''}" oninput="window._es[${i}].title=this.value" />
+        <textarea class="ai" rows="2" placeholder="詳細説明" oninput="window._es[${i}].desc=this.value">${s.desc||''}</textarea>
+      </div>
+      <button class="btn-del" onclick="window._delStep(${i})">🗑</button>`;
+    el.appendChild(d);
+  });
+  window._es=editSteps;
+}
+function renderEditTelops(){
+  const el=document.getElementById('admin-telops');el.innerHTML='';
+  const sorted=[...editTelops].sort((a,b)=>parseSec(a.time)-parseSec(b.time));
+  editTelops=sorted;
+  editTelops.forEach((t,i)=>{
+    const d=document.createElement('div');d.className='telop-edit-item';
+    d.innerHTML=`
+      <input type="text" value="${t.time||'0:00'}" placeholder="0:00"
+        oninput="window._et[${i}].time=this.value" title="表示開始時間（分:秒）" />
+      <span class="telop-sep">→</span>
+      <input type="text" value="${t.text||''}" placeholder="ここに表示するテロップを入力"
+        oninput="window._et[${i}].text=this.value" />
+      <button class="btn-del" onclick="window._delTelop(${i})" style="color:#444">🗑</button>`;
+    el.appendChild(d);
+  });
+  window._et=editTelops;
+}
+window._delStep=i=>{editSteps.splice(i,1);renderEditSteps();};
+window._delTelop=i=>{editTelops.splice(i,1);renderEditTelops();};
+window.addStep=()=>{editSteps.push({title:'',desc:''});renderEditSteps();};
+window.addTelop=()=>{editTelops.push({time:'0:00',text:''});renderEditTelops();};
+
+// ===== SAVE / DELETE =====
+window.saveManual=async function(){
+  const btn=document.getElementById('btn-save');
+  btn.disabled=true;btn.textContent='保存中...';
+  try{
+    const title=document.getElementById('a-title').value.trim();
+    if(!title){showToast('タイトルを入力してください','error');btn.disabled=false;btn.innerHTML='💾 Firestoreに保存する';return;}
+    const id=currentId||'manual_'+Date.now();
+    const data={
+      title,
+      category:document.getElementById('a-category').value.trim(),
+      time:document.getElementById('a-time').value.trim(),
+      video:document.getElementById('a-video').value.trim(),
+      steps:editSteps.map(s=>({title:s.title||'',desc:s.desc||''})),
+      telops:editTelops.map(t=>({time:t.time||'0:00',text:t.text||''})),
+      updatedAt:new Date().toISOString()
+    };
+    await setDoc(doc(db,'manuals',id),data);
+    const idx=allManuals.findIndex(x=>x.id===id);
+    if(idx>=0)allManuals[idx]={id,...data};else allManuals.push({id,...data});
+    manuals=[...allManuals];currentId=id;
+    showToast('保存しました','success');
+    setMode('view');renderSidebar();
+  }catch(e){showToast('保存に失敗しました: '+e.message,'error');}
+  btn.disabled=false;btn.innerHTML='💾 Firestoreに保存する';
+};
+window.deleteManual=async function(){
+  if(!currentId)return;
+  const m=allManuals.find(x=>x.id===currentId);
+  if(!confirm(`「${m?.title}」を削除しますか？`))return;
+  try{
+    await deleteDoc(doc(db,'manuals',currentId));
+    allManuals=allManuals.filter(x=>x.id!==currentId);
+    manuals=[...allManuals];currentId=null;
+    setMode('view');renderSidebar();renderView();
+    showToast('削除しました','success');
+  }catch(e){showToast('削除に失敗しました','error');}
+};
+window.createNewManual=()=>{currentId=null;renderAdmin();};
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show '+type;
+  setTimeout(()=>{t.className='';},2800);
+}
+
+initFirebase();
+</script>
+</body>
+</html>
